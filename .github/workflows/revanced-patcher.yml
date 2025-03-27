@@ -163,7 +163,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         files: ${{ env.GOOGLE_PHOTOS_PATCHED_APK }}
-        tag_name: latest
+        tag_name: gphotos
         name: Google Photos Patches v${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}
         prerelease: false
         body: |
