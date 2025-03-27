@@ -139,19 +139,15 @@ jobs:
       run: |
         ./apkeep -a "com.google.android.apps.photos@${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}" -d apk-pure .
 
-    - name: Merge Google Photos APK (using APKEditor)
-      run: |
-        java -jar apkeditor.jar m -i "com.google.android.apps.photos@${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}.xapk"
-
     - name: Apply ReVanced Patches to Google Photos
       run: |
-        java -jar revancedcli.jar patch -p patches.rvp "com.google.android.apps.photos@${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}_merged.apk"
+        java -jar revancedcli.jar patch -p patches.rvp "com.google.android.apps.photos@${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}.apk"
 
     - name: Get Patched Google Photos APK Name
       run: |
         GOOGLE_PHOTOS_VERSION="${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}"
         PATCHES_VERSION="${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}"
-        ORIGINAL_PATCHED_APK="com.google.android.apps.photos@${GOOGLE_PHOTOS_VERSION}_merged-patched.apk"
+        ORIGINAL_PATCHED_APK="com.google.android.apps.photos@${GOOGLE_PHOTOS_VERSION}_patched.apk"
         RENAMED_PATCHED_APK="google-photos-${GOOGLE_PHOTOS_VERSION}-patched-${PATCHES_VERSION}.apk"
         mv "$ORIGINAL_PATCHED_APK" "$RENAMED_PATCHED_APK"
         echo "GOOGLE_PHOTOS_PATCHED_APK=$RENAMED_PATCHED_APK" >> $GITHUB_ENV
