@@ -1,0 +1,129 @@
+name: ReVanced Spotify Patching and Release
+
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code (if you have code to checkout)
+      uses: actions/checkout@v3
+
+    - name: Install jq
+      run: sudo apt-get install -y jq
+
+    - name: Get Latest ReVanced CLI URL
+      id: get_revanced_cli
+      run: |
+        LATEST_CLI_URL=$(curl -s "https://api.github.com/repos/ReVanced/revanced-cli/releases/latest" | jq -r '.assets[] | select(.name | endswith("all.jar")) | .browser_download_url')
+        if [ -z "$LATEST_CLI_URL" ]; then
+          echo "::error::Failed to retrieve ReVanced CLI URL."
+          exit 1
+        fi
+        CLI_VERSION=$(basename "$LATEST_CLI_URL" | sed -E 's/revanced-cli-([0-9]+\.[0-9]+\.[0-9]+)-all\.jar/\1/' | tr '[:upper:]' '[:lower:]')
+        echo "LATEST_CLI_URL=$LATEST_CLI_URL" >> $GITHUB_OUTPUT
+        echo "CLI_VERSION=$CLI_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Get Latest ReVanced Patches URL
+      id: get_revanced_patches
+      run: |
+        LATEST_PATCHES_URL=$(curl -s "https://api.github.com/repos/ReVanced/revanced-patches/releases/latest" | jq -r '.assets[] | select(.name | endswith(".rvp")) | .browser_download_url')
+        if [ -z "$LATEST_PATCHES_URL" ]; then
+          echo "::error::Failed to retrieve ReVanced Patches URL."
+          exit 1
+        fi
+        PATCHES_VERSION=$(basename "$LATEST_PATCHES_URL" | sed -E 's/patches-([0-9]+\.[0-9]+\.[0-9]+)\.rvp/\1/' | tr '[:upper:]' '[:lower:]')
+        echo "LATEST_PATCHES_URL=$LATEST_PATCHES_URL" >> $GITHUB_OUTPUT
+        echo "PATCHES_VERSION=$PATCHES_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Get Latest apkeep URL
+      id: get_apkeep
+      run: |
+        LATEST_APKEEP_URL=$(curl -s "https://api.github.com/repos/EFForg/apkeep/releases/latest" | jq -r '.assets[] | select(.name | endswith("x86_64-unknown-linux-gnu")) | .browser_download_url')
+        if [ -z "$LATEST_APKEEP_URL" ]; then
+          echo "::error::Failed to retrieve apkeep URL."
+          exit 1
+        fi
+        APKEEP_VERSION=$(curl -s "https://api.github.com/repos/EFForg/apkeep/releases/latest" | jq -r '.tag_name' | tr '[:upper:]' '[:lower:]' | sed 's/^v//')
+        echo "LATEST_APKEEP_URL=$LATEST_APKEEP_URL" >> $GITHUB_OUTPUT
+        echo "APKEEP_VERSION=$APKEEP_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Get Latest APKEditor URL
+      id: get_apkeditor
+      run: |
+        LATEST_APKEDITOR_URL=$(curl -s "https://api.github.com/repos/REAndroid/APKEditor/releases/latest" | jq -r '.assets[] | select(.name | endswith(".jar")) | .browser_download_url')
+        if [ -z "$LATEST_APKEDITOR_URL" ]; then
+          echo "::error::Failed to retrieve APKEditor URL."
+          exit 1
+        fi
+        APKEDITOR_VERSION=$(basename "$LATEST_APKEDITOR_URL" | sed -E 's/APKEditor-([0-9]+\.[0-9]+\.[0-9]+)\.jar/\1/' | tr '[:upper:]' '[:lower:]')
+        echo "LATEST_APKEDITOR_URL=$LATEST_APKEDITOR_URL" >> $GITHUB_OUTPUT
+        echo "APKEDITOR_VERSION=$APKEDITOR_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Download ReVanced CLI
+      run: |
+        wget -O revancedcli.jar "${{ steps.get_revanced_cli.outputs.LATEST_CLI_URL }}"
+        chmod +x revancedcli.jar
+
+    - name: Download ReVanced Patches
+      run: |
+        wget -O patches.rvp "${{ steps.get_revanced_patches.outputs.LATEST_PATCHES_URL }}"
+
+    - name: Download apkeep
+      run: |
+        wget -O apkeep "${{ steps.get_apkeep.outputs.LATEST_APKEEP_URL }}"
+        chmod +x apkeep
+
+    - name: Download APKEditor
+      run: |
+        wget -O apkeditor.jar "${{ steps.get_apkeditor.outputs.LATEST_APKEDITOR_URL }}"
+
+    - name: Get Latest Spotify Version
+      id: get_spotify_version
+      run: |
+        VERSIONS=$(./apkeep -a com.spotify.music -l .)
+        LATEST_VERSION=$(echo "$VERSIONS" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n 1)
+        echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Download Spotify APK (using apkeep)
+      run: |
+        ./apkeep -a "com.spotify.music@${{ steps.get_spotify_version.outputs.LATEST_VERSION }}" -d apk-pure .
+
+    - name: Merge APK (using APKEditor)
+      run: |
+        java -jar apkeditor.jar m -i "com.spotify.music@${{ steps.get_spotify_version.outputs.LATEST_VERSION }}.xapk"
+
+    - name: Apply ReVanced Patches
+      run: |
+        java -jar revancedcli.jar patch -p patches.rvp "com.spotify.music@${{ steps.get_spotify_version.outputs.LATEST_VERSION }}_merged.apk"
+
+    - name: Get Patched APK Name
+      run: |
+        SPOTIFY_VERSION="${{ steps.get_spotify_version.outputs.LATEST_VERSION }}"
+        PATCHES_VERSION="${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}"
+        ORIGINAL_PATCHED_APK="com.spotify.music@${SPOTIFY_VERSION}_merged-patched.apk"
+        RENAMED_PATCHED_APK="spotify-${SPOTIFY_VERSION}-patched-${PATCHES_VERSION}.apk"
+        mv "$ORIGINAL_PATCHED_APK" "$RENAMED_PATCHED_APK"
+        echo "PATCHED_APK=$RENAMED_PATCHED_APK" >> $GITHUB_ENV
+
+    - name: Upload to Latest Release
+      id: upload_release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: ${{ env.PATCHED_APK }}
+        tag_name: latest
+        name: Patches v${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}
+        prerelease: false
+        body: |
+          # Spotify ReVanced
+          * **Spotify Version:** v${{ steps.get_spotify_version.outputs.LATEST_VERSION }}
+          * **Mod Patch Version:** v${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}
+          ___
+          ## Patcher tool versions
+          * **revanced-cli:** v${{ steps.get_revanced_cli.outputs.CLI_VERSION }}
+          * **apkeep:** v${{ steps.get_apkeep.outputs.APKEEP_VERSION }}
+          * **APKeditor:** v${{ steps.get_apkeditor.outputs.APKEDITOR_VERSION }}
