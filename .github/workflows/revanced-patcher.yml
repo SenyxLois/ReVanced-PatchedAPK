@@ -147,7 +147,7 @@ jobs:
       run: |
         GOOGLE_PHOTOS_VERSION="${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}"
         PATCHES_VERSION="${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}"
-        ORIGINAL_PATCHED_APK="com.google.android.apps.photos@${GOOGLE_PHOTOS_VERSION}_patched.apk"
+        ORIGINAL_PATCHED_APK="com.google.android.apps.photos@${GOOGLE_PHOTOS_VERSION}-patched.apk"
         RENAMED_PATCHED_APK="google-photos-${GOOGLE_PHOTOS_VERSION}-patched-${PATCHES_VERSION}.apk"
         mv "$ORIGINAL_PATCHED_APK" "$RENAMED_PATCHED_APK"
         echo "GOOGLE_PHOTOS_PATCHED_APK=$RENAMED_PATCHED_APK" >> $GITHUB_ENV
