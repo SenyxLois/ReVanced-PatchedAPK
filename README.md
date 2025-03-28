@@ -1,5 +1,5 @@
 # ✨ Revanced Pre-Patched APKs!
-### Magisk/KSU not supported.
+### Does NOT contain module. Go to J-HC Github Repo instead.
 
 We provide regularly updated, pre-patched APKs for your convenience. Updates are typically released daily, though occasionally, updates may take 7-14 days (or maybe working years if we're feeling dramatic 😉).
 
