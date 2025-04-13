@@ -128,43 +128,7 @@ jobs:
           * **apkeep:** v${{ steps.get_apkeep.outputs.APKEEP_VERSION }}
           * **APKeditor:** v${{ steps.get_apkeditor.outputs.APKEDITOR_VERSION }}
 
-    - name: Get Latest Google Photos Version
-      id: get_google_photos_version
-      run: |
-        VERSIONS=$(./apkeep -a com.google.android.apps.photos -l .)
-        LATEST_VERSION=$(echo "$VERSIONS" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n 1)
-        echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_OUTPUT
 
-    - name: Download Google Photos APK (using apkeep)
-      run: |
-        ./apkeep -a "com.google.android.apps.photos@${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}" -d apk-pure .
-
-    - name: Apply ReVanced Patches to Google Photos
-      run: |
-        java -jar revancedcli.jar patch -p patches.rvp "com.google.android.apps.photos@${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}.apk"
-
-    - name: Get Patched Google Photos APK Name
-      run: |
-        GOOGLE_PHOTOS_VERSION="${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}"
-        PATCHES_VERSION="${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}"
-        ORIGINAL_PATCHED_APK="com.google.android.apps.photos@${GOOGLE_PHOTOS_VERSION}-patched.apk"
-        RENAMED_PATCHED_APK="google-photos-${GOOGLE_PHOTOS_VERSION}-patched-${PATCHES_VERSION}.apk"
-        mv "$ORIGINAL_PATCHED_APK" "$RENAMED_PATCHED_APK"
-        echo "GOOGLE_PHOTOS_PATCHED_APK=$RENAMED_PATCHED_APK" >> $GITHUB_ENV
-
-    - name: Upload Google Photos to Latest Release
-      id: upload_google_photos_release
-      uses: softprops/action-gh-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        files: ${{ env.GOOGLE_PHOTOS_PATCHED_APK }}
-        tag_name: gphotos
-        name: Google Photos Patches v${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}
-        prerelease: false
-        body: |
-          # Google Photos ReVanced
-          * **Google Photos Version:** v${{ steps.get_google_photos_version.outputs.LATEST_VERSION }}
           * **Mod Patch Version:** v${{ steps.get_revanced_patches.outputs.PATCHES_VERSION }}
           ___
           ## Patcher tool versions
