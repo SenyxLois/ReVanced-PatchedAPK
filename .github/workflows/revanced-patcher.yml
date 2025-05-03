@@ -108,6 +108,21 @@ jobs:
         mv "$ORIGINAL_PATCHED_APK" "$RENAMED_PATCHED_APK"
         echo "PATCHED_APK=$RENAMED_PATCHED_APK" >> $GITHUB_ENV
 
+    - name: Delete Existing Release
+      run: |
+        TAG_NAME="spotify"
+        RELEASE_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME" | jq -r '.id')
+
+        if [ "$RELEASE_ID" != "null" ]; then
+          curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+        fi
+
+        # Delete the tag itself
+        curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/$TAG_NAME"
+
     - name: Upload to Spotify Latest Release
       id: upload_release
       uses: softprops/action-gh-release@v1
